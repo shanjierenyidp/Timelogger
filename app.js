@@ -1,5 +1,6 @@
 const STORAGE_KEY = "pandu-time-logger:v1";
 const LOCK_KEY = "pandu-time-logger-lock:v1";
+const CHART_MODE_KEY = "pandu-time-logger-chart-mode:v1";
 
 const app = document.querySelector("#app");
 const lockScreen = document.querySelector("#lock-screen");
@@ -21,13 +22,16 @@ const exportButton = document.querySelector("#export-btn");
 const importFile = document.querySelector("#import-file");
 const clearButton = document.querySelector("#clear-btn");
 const lockButton = document.querySelector("#lock-btn");
+const chartModeButton = document.querySelector("#chart-mode-btn");
 const ctx = chart.getContext("2d");
 
 let entries = loadEntries();
 let lockConfig = loadLockConfig();
+let chartMode = localStorage.getItem(CHART_MODE_KEY) || "3d";
 
 dateInput.value = new Date().toISOString().slice(0, 10);
 setupLockScreen();
+updateChartModeButton();
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -112,6 +116,13 @@ lockButton.addEventListener("click", () => {
   accessCodeInput.focus();
 });
 
+chartModeButton.addEventListener("click", () => {
+  chartMode = chartMode === "3d" ? "2d" : "3d";
+  localStorage.setItem(CHART_MODE_KEY, chartMode);
+  updateChartModeButton();
+  drawChart();
+});
+
 lockForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   lockMessage.textContent = "";
@@ -184,6 +195,14 @@ function unlockApp() {
   render();
 }
 
+function updateChartModeButton() {
+  chartModeButton.textContent = chartMode === "3d" ? "2D view" : "3D view";
+  chartModeButton.setAttribute(
+    "aria-label",
+    chartMode === "3d" ? "Switch chart to 2D view" : "Switch chart to 3D view",
+  );
+}
+
 function loadEntries() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -219,6 +238,10 @@ async function createLockConfig(code) {
 }
 
 async function verifyCode(code, config) {
+  if ((config.algorithm || "sha256") === "sha256" && !globalThis.crypto?.subtle) {
+    throw new Error("Secure hash is unavailable in this browser context.");
+  }
+
   const salt = base64ToBytes(config.salt);
   const hash = await hashCode(code, salt);
   return hash === config.hash;
@@ -337,34 +360,32 @@ function drawChart() {
   const hasData = hoursSeries.length || weightSeries.length;
   emptyState.hidden = hasData;
 
-  drawGrid(width, height);
   if (!hasData) return;
 
-  const plot = {
-    left: 68,
-    right: width - 72,
-    top: 32,
-    bottom: height - 58,
-  };
+  const plot =
+    chartMode === "3d"
+      ? { left: 64, right: width - 132, top: 64, bottom: height - 76 }
+      : { left: 68, right: width - 72, top: 32, bottom: height - 58 };
   const dates = entries.map((entry) => new Date(`${entry.date}T00:00:00`).getTime());
   const minDate = Math.min(...dates);
   const maxDate = Math.max(...dates);
   const hoursScale = makeScale(hoursSeries.map((entry) => entry.hours), 0, 24);
   const weightScale = makeScale(weightSeries.map((entry) => entry.weight));
 
-  drawAxis(plot, width, height, hoursScale, weightScale, minDate, maxDate);
-  drawLine(hoursSeries, "hours", plot, minDate, maxDate, hoursScale, "#1b7f79");
-  drawLine(weightSeries, "weight", plot, minDate, maxDate, weightScale, "#c75146");
+  if (chartMode === "3d") {
+    drawGrid3d(plot);
+    drawAxis3d(plot, width, height, hoursScale, weightScale, minDate, maxDate);
+    drawLine3d(hoursSeries, "hours", plot, minDate, maxDate, hoursScale, "#1b7f79", 0);
+    drawLine3d(weightSeries, "weight", plot, minDate, maxDate, weightScale, "#c75146", 44);
+  } else {
+    drawGrid(plot);
+    drawAxis(plot, width, height, hoursScale, weightScale, minDate, maxDate);
+    drawLine(hoursSeries, "hours", plot, minDate, maxDate, hoursScale, "#1b7f79");
+    drawLine(weightSeries, "weight", plot, minDate, maxDate, weightScale, "#c75146");
+  }
 }
 
-function drawGrid(width, height) {
-  const plot = {
-    left: 68,
-    right: width - 72,
-    top: 32,
-    bottom: height - 58,
-  };
-
+function drawGrid(plot) {
   ctx.strokeStyle = "#e5e9e6";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -372,6 +393,45 @@ function drawGrid(width, height) {
     const y = plot.top + ((plot.bottom - plot.top) * index) / 4;
     ctx.moveTo(plot.left, y);
     ctx.lineTo(plot.right, y);
+  }
+  ctx.stroke();
+}
+
+function drawGrid3d(plot) {
+  const depth = 72;
+  const frontLeft = projectPoint(plot.left, plot.bottom, 0);
+  const frontRight = projectPoint(plot.right, plot.bottom, 0);
+  const backRight = projectPoint(plot.right, plot.bottom, depth);
+  const backLeft = projectPoint(plot.left, plot.bottom, depth);
+
+  ctx.fillStyle = "#f4f7f4";
+  ctx.strokeStyle = "#dfe6e1";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(frontLeft.x, frontLeft.y);
+  ctx.lineTo(frontRight.x, frontRight.y);
+  ctx.lineTo(backRight.x, backRight.y);
+  ctx.lineTo(backLeft.x, backLeft.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = "#e1e8e3";
+  ctx.beginPath();
+  for (let index = 0; index <= 4; index += 1) {
+    const y = plot.bottom - ((plot.bottom - plot.top) * index) / 4;
+    const start = projectPoint(plot.left, y, 0);
+    const end = projectPoint(plot.right, y, depth);
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
+  }
+
+  for (let index = 0; index <= 5; index += 1) {
+    const x = plot.left + ((plot.right - plot.left) * index) / 5;
+    const start = projectPoint(x, plot.bottom, 0);
+    const end = projectPoint(x, plot.bottom, depth);
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(end.x, end.y);
   }
   ctx.stroke();
 }
@@ -408,6 +468,42 @@ function drawAxis(plot, width, height, hoursScale, weightScale, minDate, maxDate
   });
 }
 
+function drawAxis3d(plot, width, height, hoursScale, weightScale, minDate, maxDate) {
+  ctx.fillStyle = "#637071";
+  ctx.font = "700 12px system-ui, sans-serif";
+  ctx.textBaseline = "middle";
+
+  for (let index = 0; index <= 4; index += 1) {
+    const t = index / 4;
+    const y = plot.bottom - (plot.bottom - plot.top) * t;
+    const hoursPoint = projectPoint(plot.left, y, 0);
+    const weightPoint = projectPoint(plot.right, y, 72);
+    ctx.textAlign = "right";
+    ctx.fillText(interpolate(hoursScale.min, hoursScale.max, t).toFixed(1), hoursPoint.x - 10, hoursPoint.y);
+    ctx.textAlign = "left";
+    ctx.fillText(interpolate(weightScale.min, weightScale.max, t).toFixed(1), weightPoint.x + 10, weightPoint.y);
+  }
+
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#1b7f79";
+  ctx.fillText("hours", 10, 20);
+  ctx.fillStyle = "#c75146";
+  ctx.textAlign = "right";
+  ctx.fillText("kg", width - 10, 20);
+
+  const dateLabels = makeDateLabels(minDate, maxDate);
+  ctx.fillStyle = "#637071";
+  ctx.textBaseline = "top";
+  dateLabels.forEach((date, index) => {
+    const depth = index === 0 ? 0 : 72;
+    const x = xForDate(date.getTime(), plot, minDate, maxDate);
+    const point = projectPoint(x, plot.bottom, depth);
+    ctx.textAlign = index === 0 ? "left" : "right";
+    ctx.fillText(shortDate(date), point.x, height - 38);
+  });
+}
+
 function drawLine(series, key, plot, minDate, maxDate, scale, color) {
   if (!series.length) return;
 
@@ -437,6 +533,37 @@ function drawLine(series, key, plot, minDate, maxDate, scale, color) {
   });
 }
 
+function drawLine3d(series, key, plot, minDate, maxDate, scale, color, depth) {
+  if (!series.length) return;
+
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 3.5;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.beginPath();
+
+  series.forEach((entry, index) => {
+    const date = new Date(`${entry.date}T00:00:00`).getTime();
+    const x = xForDate(date, plot, minDate, maxDate);
+    const y = yForValue(entry[key], plot, scale);
+    const point = projectPoint(x, y, depth);
+    if (index === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
+  });
+  ctx.stroke();
+
+  series.forEach((entry) => {
+    const date = new Date(`${entry.date}T00:00:00`).getTime();
+    const x = xForDate(date, plot, minDate, maxDate);
+    const y = yForValue(entry[key], plot, scale);
+    const point = projectPoint(x, y, depth);
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 function makeScale(values, floor, ceiling) {
   const clean = values.filter((value) => value !== null);
   if (!clean.length) return { min: floor ?? 0, max: ceiling ?? 1 };
@@ -460,6 +587,13 @@ function xForDate(date, plot, minDate, maxDate) {
 
 function yForValue(value, plot, scale) {
   return plot.bottom - ((value - scale.min) / (scale.max - scale.min)) * (plot.bottom - plot.top);
+}
+
+function projectPoint(x, y, depth) {
+  return {
+    x: x + depth * 0.64,
+    y: y - depth * 0.38,
+  };
 }
 
 function interpolate(min, max, t) {
