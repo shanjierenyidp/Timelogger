@@ -1,16 +1,12 @@
 const STORAGE_KEY = "pandu-time-logger:v1";
-const LOCK_KEY = "pandu-time-logger-lock:v1";
 const CHART_MODE_KEY = "pandu-time-logger-chart-mode:v1";
+const ACCESS_CODE = "8760";
 
 const app = document.querySelector("#app");
 const lockScreen = document.querySelector("#lock-screen");
 const lockForm = document.querySelector("#lock-form");
 const accessCodeInput = document.querySelector("#access-code");
-const confirmCodeInput = document.querySelector("#confirm-code");
-const confirmCodeLabel = document.querySelector("#confirm-code-label");
-const lockCopy = document.querySelector("#lock-copy");
 const lockMessage = document.querySelector("#lock-message");
-const unlockButton = document.querySelector("#unlock-btn");
 const form = document.querySelector("#entry-form");
 const dateInput = document.querySelector("#date");
 const hoursInput = document.querySelector("#hours");
@@ -26,7 +22,6 @@ const chartModeButton = document.querySelector("#chart-mode-btn");
 const ctx = chart.getContext("2d");
 
 let entries = loadEntries();
-let lockConfig = loadLockConfig();
 let chartMode = localStorage.getItem(CHART_MODE_KEY) || "3d";
 let chartDepth = 92;
 let chartAngle = -0.52;
@@ -114,7 +109,6 @@ lockButton.addEventListener("click", () => {
   app.hidden = true;
   lockScreen.hidden = false;
   accessCodeInput.value = "";
-  confirmCodeInput.value = "";
   lockMessage.textContent = "";
   accessCodeInput.focus();
 });
@@ -168,65 +162,26 @@ chart.addEventListener("dblclick", () => {
   drawChart();
 });
 
-lockForm.addEventListener("submit", async (event) => {
+lockForm.addEventListener("submit", (event) => {
   event.preventDefault();
   lockMessage.textContent = "";
 
-  try {
-    const code = accessCodeInput.value;
-    if (!code) {
-      lockMessage.textContent = "Enter your access code.";
-      return;
-    }
+  const code = accessCodeInput.value;
+  if (!code) {
+    lockMessage.textContent = "Enter your access code.";
+    return;
+  }
 
-    if (code.length < 4) {
-      lockMessage.textContent = "Use at least 4 characters.";
-      return;
-    }
-
-    if (!lockConfig) {
-      if (!confirmCodeInput.value) {
-        lockMessage.textContent = "Type the same code in both boxes.";
-        return;
-      }
-
-      if (code !== confirmCodeInput.value) {
-        lockMessage.textContent = "The codes do not match.";
-        return;
-      }
-
-      lockConfig = await createLockConfig(code);
-      localStorage.setItem(LOCK_KEY, JSON.stringify(lockConfig));
-      unlockApp();
-      return;
-    }
-
-    if (await verifyCode(code, lockConfig)) {
-      unlockApp();
-    } else {
-      lockMessage.textContent = "Incorrect code.";
-    }
-  } catch (error) {
-    lockMessage.textContent = "Could not use this code. Try reloading the page.";
-    console.error(error);
+  if (code === ACCESS_CODE) {
+    unlockApp();
+  } else {
+    lockMessage.textContent = "Incorrect code.";
   }
 });
 
 window.addEventListener("resize", drawChart);
 
 function setupLockScreen() {
-  if (lockConfig) {
-    lockCopy.textContent = "Enter your code to unlock this browser.";
-    confirmCodeLabel.hidden = true;
-    confirmCodeInput.required = false;
-    unlockButton.textContent = "Unlock";
-  } else {
-    lockCopy.textContent = "Type the same code twice to set it for this browser.";
-    confirmCodeLabel.hidden = false;
-    confirmCodeInput.required = true;
-    unlockButton.textContent = "Set code";
-  }
-
   lockScreen.hidden = false;
   app.hidden = true;
   accessCodeInput.focus();
@@ -236,7 +191,6 @@ function unlockApp() {
   lockScreen.hidden = true;
   app.hidden = false;
   accessCodeInput.value = "";
-  confirmCodeInput.value = "";
   render();
 }
 
@@ -267,81 +221,6 @@ function loadEntries() {
 
 function saveEntries() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-}
-
-function loadLockConfig() {
-  try {
-    const config = JSON.parse(localStorage.getItem(LOCK_KEY) || "null");
-    if (!config || !config.salt || !config.hash) return null;
-    return config;
-  } catch {
-    return null;
-  }
-}
-
-async function createLockConfig(code) {
-  const salt = getRandomSalt();
-  return {
-    algorithm: globalThis.crypto?.subtle ? "sha256" : "fallback",
-    salt: bytesToBase64(salt),
-    hash: await hashCode(code, salt),
-  };
-}
-
-async function verifyCode(code, config) {
-  if ((config.algorithm || "sha256") === "sha256" && !globalThis.crypto?.subtle) {
-    throw new Error("Secure hash is unavailable in this browser context.");
-  }
-
-  const salt = base64ToBytes(config.salt);
-  const hash = await hashCode(code, salt);
-  return hash === config.hash;
-}
-
-async function hashCode(code, salt) {
-  const encodedCode = new TextEncoder().encode(code);
-  const input = new Uint8Array(salt.length + encodedCode.length);
-  input.set(salt);
-  input.set(encodedCode, salt.length);
-  if (!globalThis.crypto?.subtle) return fallbackHash(input);
-
-  const digest = await globalThis.crypto.subtle.digest("SHA-256", input);
-  return bytesToBase64(new Uint8Array(digest));
-}
-
-function getRandomSalt() {
-  const salt = new Uint8Array(16);
-  if (globalThis.crypto?.getRandomValues) {
-    globalThis.crypto.getRandomValues(salt);
-    return salt;
-  }
-
-  for (let index = 0; index < salt.length; index += 1) {
-    salt[index] = Math.floor(Math.random() * 256);
-  }
-  return salt;
-}
-
-function fallbackHash(bytes) {
-  let hash = 2166136261;
-  bytes.forEach((byte) => {
-    hash ^= byte;
-    hash = Math.imul(hash, 16777619);
-  });
-  return String(hash >>> 0);
-}
-
-function bytesToBase64(bytes) {
-  let binary = "";
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary);
-}
-
-function base64ToBytes(base64) {
-  const binary = atob(base64);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 function normalizeEntry(entry) {
