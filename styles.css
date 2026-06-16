@@ -51,6 +51,48 @@ button:hover,
   padding: 32px 0;
 }
 
+.lock-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.lock-panel {
+  width: min(440px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.lock-panel h1 {
+  margin-bottom: 12px;
+}
+
+.lock-panel p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.lock-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+#lock-message {
+  min-height: 20px;
+  color: var(--weight);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+[hidden] {
+  display: none !important;
+}
+
 .entry-panel,
 .chart-panel,
 .table-panel {

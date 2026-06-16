@@ -7,7 +7,28 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <main class="app">
+    <main id="lock-screen" class="lock-screen">
+      <section class="lock-panel" aria-labelledby="lock-title">
+        <p class="eyebrow">Local access code</p>
+        <h1 id="lock-title">Time Logger</h1>
+        <p id="lock-copy">Set a code for this browser.</p>
+
+        <form id="lock-form" class="lock-form">
+          <label>
+            <span>Access code</span>
+            <input id="access-code" name="access-code" type="password" autocomplete="current-password" required>
+          </label>
+          <label id="confirm-code-label">
+            <span>Confirm code</span>
+            <input id="confirm-code" name="confirm-code" type="password" autocomplete="new-password">
+          </label>
+          <button id="unlock-btn" type="submit">Set code</button>
+          <p id="lock-message" role="status"></p>
+        </form>
+      </section>
+    </main>
+
+    <main id="app" class="app" hidden>
       <section class="entry-panel" aria-labelledby="entry-title">
         <div>
           <p class="eyebrow">Private daily log</p>
@@ -38,6 +59,7 @@
             <span><i class="weight-dot"></i>Weight kg</span>
           </div>
           <div class="actions">
+            <button id="lock-btn" type="button">Lock</button>
             <button id="export-btn" type="button">Export</button>
             <label class="import-button">
               Import
