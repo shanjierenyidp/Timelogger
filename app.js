@@ -122,12 +122,22 @@ lockForm.addEventListener("submit", async (event) => {
   }
 
   const code = accessCodeInput.value;
+  if (!code) {
+    lockMessage.textContent = "Enter your access code.";
+    return;
+  }
+
   if (code.length < 4) {
     lockMessage.textContent = "Use at least 4 characters.";
     return;
   }
 
   if (!lockConfig) {
+    if (!confirmCodeInput.value) {
+      lockMessage.textContent = "Type the same code in both boxes.";
+      return;
+    }
+
     if (code !== confirmCodeInput.value) {
       lockMessage.textContent = "The codes do not match.";
       return;
@@ -155,7 +165,7 @@ function setupLockScreen() {
     confirmCodeInput.required = false;
     unlockButton.textContent = "Unlock";
   } else {
-    lockCopy.textContent = "Set a code for this browser.";
+    lockCopy.textContent = "Type the same code twice to set it for this browser.";
     confirmCodeLabel.hidden = false;
     confirmCodeInput.required = true;
     unlockButton.textContent = "Set code";

@@ -13,14 +13,14 @@
         <h1 id="lock-title">Time Logger</h1>
         <p id="lock-copy">Set a code for this browser.</p>
 
-        <form id="lock-form" class="lock-form">
+        <form id="lock-form" class="lock-form" novalidate>
           <label>
             <span>Access code</span>
-            <input id="access-code" name="access-code" type="password" autocomplete="current-password" required>
+            <input id="access-code" name="access-code" type="password" autocomplete="current-password" required placeholder="8760">
           </label>
           <label id="confirm-code-label">
             <span>Confirm code</span>
-            <input id="confirm-code" name="confirm-code" type="password" autocomplete="new-password">
+            <input id="confirm-code" name="confirm-code" type="password" autocomplete="new-password" placeholder="8760 again">
           </label>
           <button id="unlock-btn" type="submit">Set code</button>
           <p id="lock-message" role="status"></p>
