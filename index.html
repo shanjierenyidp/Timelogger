@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Time Logger</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="entry-panel" aria-labelledby="entry-title">
+        <div>
+          <p class="eyebrow">Private daily log</p>
+          <h1 id="entry-title">Time Logger</h1>
+        </div>
+
+        <form id="entry-form" class="entry-form">
+          <label>
+            <span>Date</span>
+            <input id="date" name="date" type="date" required>
+          </label>
+          <label>
+            <span>Working hours</span>
+            <input id="hours" name="hours" type="number" inputmode="decimal" min="0" max="24" step="0.25" placeholder="8">
+          </label>
+          <label>
+            <span>Weight kg</span>
+            <input id="weight" name="weight" type="number" inputmode="decimal" min="0" step="0.1" placeholder="70.0">
+          </label>
+          <button type="submit">Save day</button>
+        </form>
+      </section>
+
+      <section class="chart-panel" aria-label="Progress chart">
+        <div class="chart-toolbar">
+          <div class="legend" aria-label="Chart legend">
+            <span><i class="hours-dot"></i>Working hours</span>
+            <span><i class="weight-dot"></i>Weight kg</span>
+          </div>
+          <div class="actions">
+            <button id="export-btn" type="button">Export</button>
+            <label class="import-button">
+              Import
+              <input id="import-file" type="file" accept="application/json">
+            </label>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart" width="1100" height="520" aria-label="Line chart of working hours and weight over time"></canvas>
+          <p id="empty-state">Add your first day to draw the curve.</p>
+        </div>
+      </section>
+
+      <section class="table-panel" aria-labelledby="table-title">
+        <div class="table-header">
+          <h2 id="table-title">Entries</h2>
+          <button id="clear-btn" type="button">Clear all</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Working hours</th>
+                <th>Weight kg</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="entries"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
