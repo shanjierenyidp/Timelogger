@@ -116,43 +116,43 @@ lockForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   lockMessage.textContent = "";
 
-  if (!globalThis.crypto?.subtle) {
-    lockMessage.textContent = "Open this app over HTTPS or localhost to use the lock.";
-    return;
-  }
-
-  const code = accessCodeInput.value;
-  if (!code) {
-    lockMessage.textContent = "Enter your access code.";
-    return;
-  }
-
-  if (code.length < 4) {
-    lockMessage.textContent = "Use at least 4 characters.";
-    return;
-  }
-
-  if (!lockConfig) {
-    if (!confirmCodeInput.value) {
-      lockMessage.textContent = "Type the same code in both boxes.";
+  try {
+    const code = accessCodeInput.value;
+    if (!code) {
+      lockMessage.textContent = "Enter your access code.";
       return;
     }
 
-    if (code !== confirmCodeInput.value) {
-      lockMessage.textContent = "The codes do not match.";
+    if (code.length < 4) {
+      lockMessage.textContent = "Use at least 4 characters.";
       return;
     }
 
-    lockConfig = await createLockConfig(code);
-    localStorage.setItem(LOCK_KEY, JSON.stringify(lockConfig));
-    unlockApp();
-    return;
-  }
+    if (!lockConfig) {
+      if (!confirmCodeInput.value) {
+        lockMessage.textContent = "Type the same code in both boxes.";
+        return;
+      }
 
-  if (await verifyCode(code, lockConfig)) {
-    unlockApp();
-  } else {
-    lockMessage.textContent = "Incorrect code.";
+      if (code !== confirmCodeInput.value) {
+        lockMessage.textContent = "The codes do not match.";
+        return;
+      }
+
+      lockConfig = await createLockConfig(code);
+      localStorage.setItem(LOCK_KEY, JSON.stringify(lockConfig));
+      unlockApp();
+      return;
+    }
+
+    if (await verifyCode(code, lockConfig)) {
+      unlockApp();
+    } else {
+      lockMessage.textContent = "Incorrect code.";
+    }
+  } catch (error) {
+    lockMessage.textContent = "Could not use this code. Try reloading the page.";
+    console.error(error);
   }
 });
 
@@ -210,8 +210,9 @@ function loadLockConfig() {
 }
 
 async function createLockConfig(code) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const salt = getRandomSalt();
   return {
+    algorithm: globalThis.crypto?.subtle ? "sha256" : "fallback",
     salt: bytesToBase64(salt),
     hash: await hashCode(code, salt),
   };
@@ -228,8 +229,32 @@ async function hashCode(code, salt) {
   const input = new Uint8Array(salt.length + encodedCode.length);
   input.set(salt);
   input.set(encodedCode, salt.length);
-  const digest = await crypto.subtle.digest("SHA-256", input);
+  if (!globalThis.crypto?.subtle) return fallbackHash(input);
+
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", input);
   return bytesToBase64(new Uint8Array(digest));
+}
+
+function getRandomSalt() {
+  const salt = new Uint8Array(16);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(salt);
+    return salt;
+  }
+
+  for (let index = 0; index < salt.length; index += 1) {
+    salt[index] = Math.floor(Math.random() * 256);
+  }
+  return salt;
+}
+
+function fallbackHash(bytes) {
+  let hash = 2166136261;
+  bytes.forEach((byte) => {
+    hash ^= byte;
+    hash = Math.imul(hash, 16777619);
+  });
+  return String(hash >>> 0);
 }
 
 function bytesToBase64(bytes) {

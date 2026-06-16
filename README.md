@@ -17,7 +17,7 @@ The access code is also local to the browser. If you forget it, you can reset th
 
 This app is static HTML, CSS, and JavaScript, so it can be hosted with GitHub Pages. If the repository is public, everyone can read the app code. Do not put a secret access code directly in the source files.
 
-The current lock protects your local browser view with a salted hash saved in `localStorage`; it does not create real server-side authentication for the public website. That is okay as long as your personal log data stays in browser storage and exported backups, not committed into the repository.
+The current lock protects your local browser view with a saved local hash in `localStorage`; it does not create real server-side authentication for the public website. That is okay as long as your personal log data stays in browser storage and exported backups, not committed into the repository.
 
 GitHub's docs say Pages works from private repositories on paid plans, but true private Pages access control is for GitHub Enterprise Cloud organization project sites. A private repository alone does not necessarily mean the published Pages site is visible only to you.
 
