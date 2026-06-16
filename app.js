@@ -587,6 +587,32 @@ function drawLine(series, key, plot, minDate, maxDate, scale, color) {
 function drawLine3d(series, key, plot, minDate, maxDate, scale, color, depth) {
   if (!series.length) return;
 
+  const topPoints = series.map((entry) => {
+    const date = new Date(`${entry.date}T00:00:00`).getTime();
+    const x = xForDate(date, plot, minDate, maxDate);
+    const y = yForValue(entry[key], plot, scale);
+    return projectPoint(x, y, depth);
+  });
+  const floorPoints = series.map((entry) => {
+    const date = new Date(`${entry.date}T00:00:00`).getTime();
+    const x = xForDate(date, plot, minDate, maxDate);
+    return projectPoint(x, plot.bottom, depth);
+  });
+
+  if (topPoints.length > 1) {
+    ctx.fillStyle = colorToAlpha(color, 0.22);
+    ctx.beginPath();
+    topPoints.forEach((point, index) => {
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    });
+    [...floorPoints].reverse().forEach((point) => {
+      ctx.lineTo(point.x, point.y);
+    });
+    ctx.closePath();
+    ctx.fill();
+  }
+
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = 3.5;
@@ -594,21 +620,13 @@ function drawLine3d(series, key, plot, minDate, maxDate, scale, color, depth) {
   ctx.lineCap = "round";
   ctx.beginPath();
 
-  series.forEach((entry, index) => {
-    const date = new Date(`${entry.date}T00:00:00`).getTime();
-    const x = xForDate(date, plot, minDate, maxDate);
-    const y = yForValue(entry[key], plot, scale);
-    const point = projectPoint(x, y, depth);
+  topPoints.forEach((point, index) => {
     if (index === 0) ctx.moveTo(point.x, point.y);
     else ctx.lineTo(point.x, point.y);
   });
   ctx.stroke();
 
-  series.forEach((entry) => {
-    const date = new Date(`${entry.date}T00:00:00`).getTime();
-    const x = xForDate(date, plot, minDate, maxDate);
-    const y = yForValue(entry[key], plot, scale);
-    const point = projectPoint(x, y, depth);
+  topPoints.forEach((point) => {
     ctx.beginPath();
     ctx.arc(point.x, point.y, 4.5, 0, Math.PI * 2);
     ctx.fill();
@@ -649,6 +667,14 @@ function projectPoint(x, y, depth) {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function colorToAlpha(hex, alpha) {
+  const normalized = hex.replace("#", "");
+  const red = parseInt(normalized.slice(0, 2), 16);
+  const green = parseInt(normalized.slice(2, 4), 16);
+  const blue = parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function interpolate(min, max, t) {
