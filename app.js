@@ -28,6 +28,9 @@ const ctx = chart.getContext("2d");
 let entries = loadEntries();
 let lockConfig = loadLockConfig();
 let chartMode = localStorage.getItem(CHART_MODE_KEY) || "3d";
+let chartDepth = 92;
+let chartAngle = -0.52;
+let dragStart = null;
 
 dateInput.value = new Date().toISOString().slice(0, 10);
 setupLockScreen();
@@ -123,6 +126,48 @@ chartModeButton.addEventListener("click", () => {
   drawChart();
 });
 
+chart.addEventListener("pointerdown", (event) => {
+  if (chartMode !== "3d") return;
+  dragStart = {
+    x: event.clientX,
+    y: event.clientY,
+    angle: chartAngle,
+    depth: chartDepth,
+  };
+  chart.setPointerCapture(event.pointerId);
+  chart.classList.add("is-dragging");
+});
+
+chart.addEventListener("pointermove", (event) => {
+  if (!dragStart) return;
+
+  const dx = event.clientX - dragStart.x;
+  const dy = event.clientY - dragStart.y;
+  chartAngle = clamp(dragStart.angle + dx * 0.006, -1.05, 0.22);
+  chartDepth = clamp(dragStart.depth - dy * 0.35, 36, 150);
+  drawChart();
+});
+
+chart.addEventListener("pointerup", endChartDrag);
+chart.addEventListener("pointercancel", endChartDrag);
+
+chart.addEventListener(
+  "wheel",
+  (event) => {
+    if (chartMode !== "3d") return;
+    event.preventDefault();
+    chartDepth = clamp(chartDepth - event.deltaY * 0.08, 36, 150);
+    drawChart();
+  },
+  { passive: false },
+);
+
+chart.addEventListener("dblclick", () => {
+  chartAngle = -0.52;
+  chartDepth = 92;
+  drawChart();
+});
+
 lockForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   lockMessage.textContent = "";
@@ -196,11 +241,17 @@ function unlockApp() {
 }
 
 function updateChartModeButton() {
-  chartModeButton.textContent = chartMode === "3d" ? "2D view" : "3D view";
+  chartModeButton.textContent = chartMode === "3d" ? "3D view" : "2D view";
+  chart.classList.toggle("chart-3d", chartMode === "3d");
   chartModeButton.setAttribute(
     "aria-label",
     chartMode === "3d" ? "Switch chart to 2D view" : "Switch chart to 3D view",
   );
+}
+
+function endChartDrag() {
+  dragStart = null;
+  chart.classList.remove("is-dragging");
 }
 
 function loadEntries() {
@@ -376,7 +427,7 @@ function drawChart() {
     drawGrid3d(plot);
     drawAxis3d(plot, width, height, hoursScale, weightScale, minDate, maxDate);
     drawLine3d(hoursSeries, "hours", plot, minDate, maxDate, hoursScale, "#1b7f79", 0);
-    drawLine3d(weightSeries, "weight", plot, minDate, maxDate, weightScale, "#c75146", 44);
+    drawLine3d(weightSeries, "weight", plot, minDate, maxDate, weightScale, "#c75146", chartDepth * 0.62);
   } else {
     drawGrid(plot);
     drawAxis(plot, width, height, hoursScale, weightScale, minDate, maxDate);
@@ -398,7 +449,7 @@ function drawGrid(plot) {
 }
 
 function drawGrid3d(plot) {
-  const depth = 72;
+  const depth = chartDepth;
   const frontLeft = projectPoint(plot.left, plot.bottom, 0);
   const frontRight = projectPoint(plot.right, plot.bottom, 0);
   const backRight = projectPoint(plot.right, plot.bottom, depth);
@@ -477,7 +528,7 @@ function drawAxis3d(plot, width, height, hoursScale, weightScale, minDate, maxDa
     const t = index / 4;
     const y = plot.bottom - (plot.bottom - plot.top) * t;
     const hoursPoint = projectPoint(plot.left, y, 0);
-    const weightPoint = projectPoint(plot.right, y, 72);
+    const weightPoint = projectPoint(plot.right, y, chartDepth);
     ctx.textAlign = "right";
     ctx.fillText(interpolate(hoursScale.min, hoursScale.max, t).toFixed(1), hoursPoint.x - 10, hoursPoint.y);
     ctx.textAlign = "left";
@@ -496,7 +547,7 @@ function drawAxis3d(plot, width, height, hoursScale, weightScale, minDate, maxDa
   ctx.fillStyle = "#637071";
   ctx.textBaseline = "top";
   dateLabels.forEach((date, index) => {
-    const depth = index === 0 ? 0 : 72;
+    const depth = index === 0 ? 0 : chartDepth;
     const x = xForDate(date.getTime(), plot, minDate, maxDate);
     const point = projectPoint(x, plot.bottom, depth);
     ctx.textAlign = index === 0 ? "left" : "right";
@@ -591,9 +642,13 @@ function yForValue(value, plot, scale) {
 
 function projectPoint(x, y, depth) {
   return {
-    x: x + depth * 0.64,
-    y: y - depth * 0.38,
+    x: x + Math.cos(chartAngle) * depth,
+    y: y + Math.sin(chartAngle) * depth,
   };
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function interpolate(min, max, t) {

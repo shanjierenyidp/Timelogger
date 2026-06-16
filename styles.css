@@ -234,6 +234,15 @@ canvas {
   min-height: 330px;
 }
 
+canvas.chart-3d {
+  cursor: grab;
+  touch-action: none;
+}
+
+canvas.chart-3d.is-dragging {
+  cursor: grabbing;
+}
+
 #empty-state {
   position: absolute;
   inset: 0;
