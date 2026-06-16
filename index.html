@@ -4,27 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Time Logger</title>
-    <link rel="stylesheet" href="styles.css?v=9">
+    <link rel="stylesheet" href="styles.css?v=10">
   </head>
   <body>
-    <main id="lock-screen" class="lock-screen">
-      <section class="lock-panel" aria-labelledby="lock-title">
-        <p class="eyebrow">Local access code</p>
-        <h1 id="lock-title">Time Logger</h1>
-        <p id="lock-copy">Enter the access code to open your logger.</p>
-
-        <form id="lock-form" class="lock-form" autocomplete="off" novalidate>
-          <label>
-            <span>Access code</span>
-            <input id="access-code" name="access-code" type="password" autocomplete="off" required placeholder="Private code">
-          </label>
-          <button id="unlock-btn" type="submit">Unlock</button>
-          <p id="lock-message" role="status"></p>
-        </form>
-      </section>
-    </main>
-
-    <main id="app" class="app" hidden>
+    <main id="app" class="app">
       <section class="entry-panel" aria-labelledby="entry-title">
         <div>
           <p class="eyebrow">Private daily log</p>
@@ -56,7 +39,6 @@
           </div>
           <div class="actions">
             <button id="chart-mode-btn" type="button">2D view</button>
-            <button id="lock-btn" type="button">Lock</button>
             <button id="export-btn" type="button">Export</button>
             <label class="import-button">
               Import
@@ -91,6 +73,6 @@
       </section>
     </main>
 
-    <script src="app.js?v=9"></script>
+    <script src="app.js?v=10"></script>
   </body>
 </html>

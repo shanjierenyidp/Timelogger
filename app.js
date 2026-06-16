@@ -1,12 +1,6 @@
 const STORAGE_KEY = "pandu-time-logger:v1";
 const CHART_MODE_KEY = "pandu-time-logger-chart-mode:v1";
-const ACCESS_CODE = "8760";
 
-const app = document.querySelector("#app");
-const lockScreen = document.querySelector("#lock-screen");
-const lockForm = document.querySelector("#lock-form");
-const accessCodeInput = document.querySelector("#access-code");
-const lockMessage = document.querySelector("#lock-message");
 const form = document.querySelector("#entry-form");
 const dateInput = document.querySelector("#date");
 const hoursInput = document.querySelector("#hours");
@@ -17,7 +11,6 @@ const emptyState = document.querySelector("#empty-state");
 const exportButton = document.querySelector("#export-btn");
 const importFile = document.querySelector("#import-file");
 const clearButton = document.querySelector("#clear-btn");
-const lockButton = document.querySelector("#lock-btn");
 const chartModeButton = document.querySelector("#chart-mode-btn");
 const ctx = chart.getContext("2d");
 
@@ -28,8 +21,8 @@ let chartAngle = -0.52;
 let dragStart = null;
 
 dateInput.value = new Date().toISOString().slice(0, 10);
-setupLockScreen();
 updateChartModeButton();
+render();
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -105,14 +98,6 @@ clearButton.addEventListener("click", () => {
   render();
 });
 
-lockButton.addEventListener("click", () => {
-  app.hidden = true;
-  lockScreen.hidden = false;
-  accessCodeInput.value = "";
-  lockMessage.textContent = "";
-  accessCodeInput.focus();
-});
-
 chartModeButton.addEventListener("click", () => {
   chartMode = chartMode === "3d" ? "2d" : "3d";
   localStorage.setItem(CHART_MODE_KEY, chartMode);
@@ -162,37 +147,7 @@ chart.addEventListener("dblclick", () => {
   drawChart();
 });
 
-lockForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  lockMessage.textContent = "";
-
-  const code = accessCodeInput.value;
-  if (!code) {
-    lockMessage.textContent = "Enter your access code.";
-    return;
-  }
-
-  if (code === ACCESS_CODE) {
-    unlockApp();
-  } else {
-    lockMessage.textContent = "Incorrect code.";
-  }
-});
-
 window.addEventListener("resize", drawChart);
-
-function setupLockScreen() {
-  lockScreen.hidden = false;
-  app.hidden = true;
-  accessCodeInput.focus();
-}
-
-function unlockApp() {
-  lockScreen.hidden = true;
-  app.hidden = false;
-  accessCodeInput.value = "";
-  render();
-}
 
 function updateChartModeButton() {
   chartModeButton.textContent = chartMode === "3d" ? "3D view" : "2D view";
